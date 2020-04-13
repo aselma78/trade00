@@ -38,6 +38,7 @@ class TradingModel:
             # Indicators
             self.df = ind.macd(self.df)
             self.df = ind.money_flow_index(self.df)
+            self.df = ind.rsi(self.df)
             
 
         except Exception as e:
@@ -175,9 +176,15 @@ class TradingModel:
 
         mfi = go.Scatter(
             x = df['time'],
-            y = df['money_flow_index'],
+            y = 1 - df['money_flow_index'],
             name = "money_flow_index",
             line = dict(color = ('rgba(0, 0, 255, 50)')))
+
+        rsi = go.Scatter(
+            x = df['time'],
+            y = df['rsi'],
+            name = "rsi",
+            line = dict(color = ('rgba(0, 255, 255, 50)')))
 
         
 
@@ -204,7 +211,7 @@ class TradingModel:
         # style and display
         layout = go.Layout(title = self.symbol)
 
-        fig = make_subplots(rows=4, cols=1, shared_xaxes=True)
+        fig = make_subplots(rows=3, cols=1, shared_xaxes=True)
 
         #fig = go.Figure()
         #fig = go.Figure(data = data, layout = layout)
@@ -214,9 +221,10 @@ class TradingModel:
 
         
         fig.add_trace(vol,row=2,col=1)
-        fig.add_trace(macd_val,row=3,col=1)
-        fig.add_trace(macd_signal_line,row=3,col=1)
-        fig.add_trace(mfi,row=4,col=1)
+        #fig.add_trace(macd_val,row=3,col=1)
+        #fig.add_trace(macd_signal_line,row=3,col=1)
+        fig.add_trace(rsi,row=3,col=1)
+        fig.add_trace(mfi,row=3,col=1)
         fig.layout.template = "plotly_dark"
 
 

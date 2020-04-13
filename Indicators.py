@@ -503,7 +503,7 @@ def momentum(data, periods=14, close_col='close'):
             prev_close = data.at[index-periods, close_col]
             val_perc = (row[close_col] - prev_close)/prev_close
 
-            data.at[index, 'momentum'] = val_perc)
+            data.at[index, 'momentum'] = val_perc
 
     return data
 
