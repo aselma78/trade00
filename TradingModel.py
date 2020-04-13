@@ -5,11 +5,13 @@ import json
 
 import plotly.graph_objs as go
 from plotly.offline import plot
+from plotly.subplots import make_subplots
 
 from pyti.smoothed_moving_average import smoothed_moving_average as sma
 from pyti.bollinger_bands import lower_bollinger_band as lbb
 from pyti.bollinger_bands import upper_bollinger_band as ubb
 
+from importlib import reload
 from . import Binance as bi
 reload(bi)
 
@@ -152,7 +154,7 @@ class TradingModel:
             marker=dict(color = colors),       
             name = "volume")
 
-        data.extend([candle, vwap, vol])
+        data.extend([candle, vwap])
 
         if buy_signals:
             buys = go.Scatter(
@@ -174,7 +176,17 @@ class TradingModel:
 
         # style and display
         layout = go.Layout(title = self.symbol)
-        fig = go.Figure(data = data, layout = layout)
+
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
+
+        #fig = go.Figure()
+        #fig = go.Figure(data = data, layout = layout)
+        #fig = go.Figure(data = data)
+        for gobject in data:
+            fig.add_trace(gobject,row=1,col=1)
+
+        
+        fig.add_trace(vol,row=2,col=1)
         fig.layout.template = "plotly_dark"
 
 
