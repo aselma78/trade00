@@ -1,0 +1,7 @@
+from trading00 import TradingModel as tm 
+symbol="EURUSDT" 
+from importlib import reload
+
+reload(tm) 
+model = tm.TradingModel(symbol) 
+model.plotData() 
