@@ -1,4 +1,4 @@
-from trading00 import TradingModel as tm 
+from trade00 import TradingModel as tm 
 symbol="EURUSDT" 
 from importlib import reload
 
