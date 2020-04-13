@@ -13,7 +13,9 @@ from pyti.bollinger_bands import upper_bollinger_band as ubb
 
 from importlib import reload
 from . import Binance as bi
+from . import Indicators as ind
 reload(bi)
+reload(ind)
 
 class TradingModel:
     
@@ -32,6 +34,11 @@ class TradingModel:
             self.df['vwap'] = (self.df['volume']*(self.df['close'])).cumsum() / self.df['volume'].cumsum()
             #self.df['vwap'] = (self.df['volume']*(self.df['high']+self.df['low'])/2).cumsum() / self.df['volume'].cumsum()
             self.df['vwma'] = self.vwma(14)
+
+            # Indicators
+            self.df = ind.macd(self.df)
+            self.df = ind.money_flow_index(self.df)
+            
 
         except Exception as e:
             print(" Exception raised when trying to compute indicators on "+self.symbol)
@@ -150,9 +157,29 @@ class TradingModel:
 
         vol = go.Bar(
             x = df['time'],
-            y = df['volume']*df['low_boll'].min()/df['volume'].max(),
+            y = df['volume'],
             marker=dict(color = colors),       
-            name = "volume")
+            name = "volume") 
+
+        macd_val = go.Scatter(
+            x = df['time'],
+            y = df['macd_val'],
+            name = "macd_val",
+            line = dict(color = ('rgba(123, 102, 107, 50)')))
+
+        macd_signal_line = go.Scatter(
+            x = df['time'],
+            y = df['macd_signal_line'],
+            name = "macd_signal_line",
+            line = dict(color = ('rgba(255, 0, 0, 50)')))
+
+        mfi = go.Scatter(
+            x = df['time'],
+            y = df['money_flow_index'],
+            name = "money_flow_index",
+            line = dict(color = ('rgba(0, 0, 255, 50)')))
+
+        
 
         data.extend([candle, vwap])
 
@@ -177,7 +204,7 @@ class TradingModel:
         # style and display
         layout = go.Layout(title = self.symbol)
 
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
+        fig = make_subplots(rows=4, cols=1, shared_xaxes=True)
 
         #fig = go.Figure()
         #fig = go.Figure(data = data, layout = layout)
@@ -187,6 +214,9 @@ class TradingModel:
 
         
         fig.add_trace(vol,row=2,col=1)
+        fig.add_trace(macd_val,row=3,col=1)
+        fig.add_trace(macd_signal_line,row=3,col=1)
+        fig.add_trace(mfi,row=4,col=1)
         fig.layout.template = "plotly_dark"
 
 
