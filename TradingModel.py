@@ -7,6 +7,7 @@ import plotly.graph_objs as go
 from plotly.offline import plot
 from plotly.subplots import make_subplots
 
+from finta import TA
 from pyti.smoothed_moving_average import smoothed_moving_average as sma
 from pyti.bollinger_bands import lower_bollinger_band as lbb
 from pyti.bollinger_bands import upper_bollinger_band as ubb
@@ -35,10 +36,15 @@ class TradingModel:
             #self.df['vwap'] = (self.df['volume']*(self.df['high']+self.df['low'])/2).cumsum() / self.df['volume'].cumsum()
             self.df['vwma'] = self.vwma(14)
 
-            # Indicators
+            # From Indicators
             self.df = ind.macd(self.df)
             self.df = ind.money_flow_index(self.df)
             self.df = ind.rsi(self.df)
+
+            #From Finta
+            vw_macd = TA.VW_MACD(self.df)
+            self.df['vw_macd'] = vw_macd['MACD']
+            self.df['vw_macd_sig'] = vw_macd['SIGNAL']
             
 
         except Exception as e:
@@ -65,14 +71,6 @@ class TradingModel:
             aux_weighted_price[i+n] = weighted_price
 
         return tmp1 / tmp2
-
-
-
-        volume = self.df['volume'].rolling(window=n)
-        high = self.df['high'].rolling(window=n)
-        low = self.df['low'].rolling(window=n)
-
-        return (volume*(high+low)/2).cumsum() / volume.cumsum()
 
     def strategy(self): 
         
@@ -148,7 +146,7 @@ class TradingModel:
             name = "Vwap",
             line = dict(color = ('rgba(255, 102, 107, 50)')))
 
-        for i in range(5,455,25):
+        for i in range(5,455,100):
             vwma = go.Scatter(
                 x = df['time'],
                 y = self.vwma(i),
@@ -166,13 +164,25 @@ class TradingModel:
             x = df['time'],
             y = df['macd_val'],
             name = "macd_val",
-            line = dict(color = ('rgba(123, 102, 107, 50)')))
+            line = dict(color = ('rgba(255, 102, 107, 50)')))
 
         macd_signal_line = go.Scatter(
             x = df['time'],
             y = df['macd_signal_line'],
             name = "macd_signal_line",
             line = dict(color = ('rgba(255, 0, 0, 50)')))
+
+        vw_macd = go.Scatter(
+            x = df['time'],
+            y = df['vw_macd'],
+            name = "vw_macd",
+            line = dict(color = ('rgba(123, 255, 107, 50)')))
+
+        vw_macd_sig = go.Scatter(
+            x = df['time'],
+            y = df['vw_macd_sig'],
+            name = "vw_macd_sig",
+            line = dict(color = ('rgba(0, 255, 0, 50)')))
 
         mfi = go.Scatter(
             x = df['time'],
@@ -211,20 +221,24 @@ class TradingModel:
         # style and display
         layout = go.Layout(title = self.symbol)
 
-        fig = make_subplots(rows=3, cols=1, shared_xaxes=True)
+        fig = make_subplots(rows=4, cols=1, shared_xaxes=True, row_heights=[100,25,25,25])
 
         #fig = go.Figure()
         #fig = go.Figure(data = data, layout = layout)
         #fig = go.Figure(data = data)
         for gobject in data:
             fig.add_trace(gobject,row=1,col=1)
-
         
-        fig.add_trace(vol,row=2,col=1)
-        #fig.add_trace(macd_val,row=3,col=1)
-        #fig.add_trace(macd_signal_line,row=3,col=1)
+        fig.add_trace(vol,row=2,col=1)        
+
         fig.add_trace(rsi,row=3,col=1)
         fig.add_trace(mfi,row=3,col=1)
+
+        fig.add_trace(macd_val,row=4,col=1)
+        fig.add_trace(macd_signal_line,row=4,col=1)
+        fig.add_trace(vw_macd,row=4,col=1)
+        fig.add_trace(vw_macd_sig,row=4,col=1)
+
         fig.layout.template = "plotly_dark"
 
 
