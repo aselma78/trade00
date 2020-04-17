@@ -1,110 +1,74 @@
 import pandas as pd
-import numpy as np
 import requests
 import json
 
-import plotly.graph_objs as go
-from plotly.offline import plot
-from plotly.subplots import make_subplots
+import numpy as np
+import Indicators
 
-from finta import TA
-from pyti.smoothed_moving_average import smoothed_moving_average as sma
-from pyti.bollinger_bands import lower_bollinger_band as lbb
-from pyti.bollinger_bands import upper_bollinger_band as ubb
+import finplot as fplt
 
-from importlib import reload
-from . import Binance as bi
-from . import Indicators as ind
-reload(bi)
-reload(ind)
+from Binance import Binance
 
 class TradingModel:
     
-    def __init__(self, symbol):
+    # We can now remove the code where we're computing the indicators from this class,
+    # As we will be computing them in the Strategies class (on a per-need basis)
+
+    def __init__(self, symbol, timeframe:str='4h'):
         self.symbol = symbol
-        self.exchange = bi.Binance()
-        self.df = self.exchange.GetSymbolData(symbol, '4h')
+        self.timeframe = timeframe
+        self.exchange = Binance()
+        self.df = self.exchange.GetSymbolKlines(symbol, timeframe, 10000)
         self.last_price = self.df['close'][len(self.df['close'])-1]
-        self.buy_signals = []
 
-        try:
-            self.df['fast_sma'] = sma(self.df['close'].tolist(), 10)
-            self.df['slow_sma'] = sma(self.df['close'].tolist(), 30)
-            self.df['low_boll'] = lbb(self.df['close'].tolist(), 14)
-            self.df['up_boll'] = ubb(self.df['close'].tolist(), 14)
-            self.df['vwap'] = (self.df['volume']*(self.df['close'])).cumsum() / self.df['volume'].cumsum()
-            #self.df['vwap'] = (self.df['volume']*(self.df['high']+self.df['low'])/2).cumsum() / self.df['volume'].cumsum()
-            self.df['vwma'] = self.vwma(14)
+    # We'll look directly in the dataframe to see what indicators we're plotting
 
-            # From Indicators
-            self.df = ind.macd(self.df)
-            self.df = ind.money_flow_index(self.df)
-            self.df = ind.rsi(self.df)
+    def plotData(self, buy_signals = False, sell_signals = False, plot_title:str="",target="default",
+                indicators=[]):
+        if target=="default":
+            self.plotFinplot(buy_signals=buy_signals, sell_signals=sell_signals, plot_title=plot_title,
+                indicators=indicators)
+        else:
+            self.plotLy(buy_signals=buy_signals, sell_signals=sell_signals, plot_title=plot_title,
+                indicators=indicators)
 
-            #From Finta
-            vw_macd = TA.VW_MACD(self.df)
-            self.df['vw_macd'] = vw_macd['MACD']
-            self.df['vw_macd_sig'] = vw_macd['SIGNAL']
-            
-
-        except Exception as e:
-            print(" Exception raised when trying to compute indicators on "+self.symbol)
-            print(e)
-            return None
-
-    def vwma(self, n):
-        #import ipdb; ipdb.set_trace()
-
-        vector_size = len(self.df['volume'])
-
-        aux_volume = np.concatenate(( np.zeros(n),  self.df['volume'].values ))
-        aux_weighted_price = np.zeros( n + vector_size )
-
-        tmp1 = np.zeros(vector_size)
-        tmp2 = np.zeros(vector_size)
-        for i in range(0,vector_size):
-            weighted_price = self.df['volume'][i] * ( self.df['high'][i] + self.df['low'][i] ) / 2.            
-
-            tmp1[i] = tmp1[i-1] + weighted_price - aux_weighted_price[i]
-            tmp2[i] = tmp2[i-1] + self.df['volume'][i] - aux_volume[i]
-
-            aux_weighted_price[i+n] = weighted_price
-
-        return tmp1 / tmp2
-
-    def strategy(self): 
-        
-        '''If Price is 3% below Slow Moving Average, then Buy
-        Put selling order for 2% above buying price'''
-
+    def plotFinplot(self, buy_signals = False, sell_signals = False, plot_title:str="",
+    indicators=[]):
         df = self.df
 
-        buy_signals = []
+        ax,ax2,ax3 = fplt.create_plot(self.symbol, rows=3)
 
-        for i in range(1, len(df['close'])):
-            if df['slow_sma'][i] > df['low'][i] and (df['slow_sma'][i] - df['low'][i]) > 0.03 * df['low'][i]:
-                buy_signals.append([df['time'][i], df['low'][i]])
+        # plot candle sticks
+        candles = df[['time','open','close','high','low']]
+        fplt.candlestick_ochl(candles, ax=ax)
 
-        self.plotData(buy_signals = buy_signals)
+        # put an MA in there
+        fplt.plot(df['time'], df['close'].rolling(25).mean(), ax=ax, color='#00f', legend='ma-25')
 
-    def plotData(self, buy_signals = False):
+        # place some dumb markers
+        hi_wicks = df['high'] - df[['open','close']].T.max()
+        df.loc[(hi_wicks>hi_wicks.quantile(0.99)), 'marker'] = df['high']
+        fplt.plot(df['time'], df['marker'], ax=ax, color='#0F0', style='v', legend='dumb mark')
+
+        fplt.plot(df['time'], Indicators.vwma(df)['vwma'], ax=ax, color='#927', legend='stuff')
+
+        # draw some random crap on our second plot
+        fplt.plot(df['time'], Indicators.rsi(df)['rsi'], ax=ax2, color='#927', legend='stuff')
+        fplt.set_y_range(-1.4, +1.7, ax2) # fix y-axis range
+
+        # finally a volume bar chart in our third plot
+        volumes = df[['time','open','close','volume']]
+        fplt.volume_ocv(volumes, ax=ax3)
+
+        # we're done
+        fplt.show()
+
+    def plotLy(self, buy_signals = False, sell_signals = False, plot_title:str="",
+            indicators=[
+                dict(col_name="fast_ema", color="indianred", name="FAST EMA"), 
+                dict(col_name="50_ema", color="indianred", name="50 EMA"), 
+                dict(col_name="200_ema", color="indianred", name="200 EMA")]):
         df = self.df
-
-        INCREASING_COLOR = '#3D9970'
-        DECREASING_COLOR = '#FF4136'
-
-        colors = []
-        data = []
-
-        for i in range(len(df['close'])):
-            if i != 0:
-                if df['close'][i] > df['close'][i-1]:
-                    colors.append(INCREASING_COLOR)
-                else:
-                    colors.append(DECREASING_COLOR)
-            else:
-                colors.append(DECREASING_COLOR)
-
 
         # plot candlestick chart
         candle = go.Candlestick(
@@ -115,90 +79,97 @@ class TradingModel:
             low = df['low'],
             name = "Candlesticks")
 
-        # plot MAs
-        fsma = go.Scatter(
-            x = df['time'],
-            y = df['fast_sma'],
-            name = "Fast SMA",
-            line = dict(color = ('rgba(102, 207, 255, 50)')))
+        data = [candle]
 
-        ssma = go.Scatter(
-            x = df['time'],
-            y = df['slow_sma'],
-            name = "Slow SMA",
-            line = dict(color = ('rgba(255, 207, 102, 50)')))
+        for item in indicators:
+            if df.__contains__(item['col_name']):
+                fsma = go.Scatter(
+                    x = df['time'],
+                    y = df[item['col_name']],
+                    name = item['name'],
+                    line = dict(color = (item['color'])))
+                data.append(fsma)
 
-        lowbb = go.Scatter(
-            x = df['time'],
-            y = df['low_boll'],
-            name = "Lower Bollinger Band",
-            line = dict(color = ('rgba(255, 102, 207, 50)')))
+        # if df.__contains__('50_ema'):
+        #   fsma = go.Scatter(
+        #       x = df['time'],
+        #       y = df['50_ema'],
+        #       name = "50 EMA",
+        #       line = dict(color = ('rgba(102, 207, 255, 50)')))
+        #   data.append(fsma)
 
-        upbb = go.Scatter(
-            x = df['time'],
-            y = df['up_boll'],
-            name = "Upper Bollinger Band",
-            line = dict(color = ('rgba(255, 102, 207, 50)')))
+        # if df.__contains__('200_ema'):
+        #   fsma = go.Scatter(
+        #       x = df['time'],
+        #       y = df['200_ema'],
+        #       name = "200 EMA",
+        #       line = dict(color = ('rgba(102, 207, 255, 50)')))
+        #   data.append(fsma)
 
-        vwap = go.Scatter(
-            x = df['time'],
-            y = df['vwap'],
-            name = "Vwap",
-            line = dict(color = ('rgba(255, 102, 107, 50)')))
-
-        for i in range(5,455,100):
-            vwma = go.Scatter(
+        if df.__contains__('fast_sma'):
+            fsma = go.Scatter(
                 x = df['time'],
-                y = self.vwma(i),
-                name = "vwma"+str(i),
-                line = dict(color = ('rgba(0, 255, 0, 50)')))
-            data.append(vwma)
+                y = df['fast_sma'],
+                name = "Fast SMA",
+                line = dict(color = ('rgba(102, 207, 255, 50)')))
+            data.append(fsma)
 
-        vol = go.Bar(
-            x = df['time'],
-            y = df['volume'],
-            marker=dict(color = colors),       
-            name = "volume") 
+        if df.__contains__('slow_sma'):
+            ssma = go.Scatter(
+                x = df['time'],
+                y = df['slow_sma'],
+                name = "Slow SMA",
+                line = dict(color = ('rgba(255, 207, 102, 50)')))
+            data.append(ssma)
 
-        macd_val = go.Scatter(
-            x = df['time'],
-            y = df['macd_val'],
-            name = "macd_val",
-            line = dict(color = ('rgba(255, 102, 107, 50)')))
+        if df.__contains__('low_boll'):
+            lowbb = go.Scatter(
+                x = df['time'],
+                y = df['low_boll'],
+                name = "Lower Bollinger Band",
+                line = dict(color = ('rgba(255, 102, 207, 50)')))
+            data.append(lowbb)
 
-        macd_signal_line = go.Scatter(
-            x = df['time'],
-            y = df['macd_signal_line'],
-            name = "macd_signal_line",
-            line = dict(color = ('rgba(255, 0, 0, 50)')))
+        # Now, Let's also plot the Ichimoku Indicators
 
-        vw_macd = go.Scatter(
-            x = df['time'],
-            y = df['vw_macd'],
-            name = "vw_macd",
-            line = dict(color = ('rgba(123, 255, 107, 50)')))
-
-        vw_macd_sig = go.Scatter(
-            x = df['time'],
-            y = df['vw_macd_sig'],
-            name = "vw_macd_sig",
-            line = dict(color = ('rgba(0, 255, 0, 50)')))
-
-        mfi = go.Scatter(
-            x = df['time'],
-            y = 1 - df['money_flow_index'],
-            name = "money_flow_index",
-            line = dict(color = ('rgba(0, 0, 255, 50)')))
-
-        rsi = go.Scatter(
-            x = df['time'],
-            y = df['rsi'],
-            name = "rsi",
-            line = dict(color = ('rgba(0, 255, 255, 50)')))
-
+        if df.__contains__('tenkansen'):
+            trace = go.Scatter(
+                x = df['time'],
+                y = df['tenkansen'],
+                name = "Tenkansen",
+                line = dict(color = ('rgba(40, 40, 141, 100)')))
+            data.append(trace)
         
+        if df.__contains__('kijunsen'):
+            trace = go.Scatter(
+                x = df['time'],
+                y = df['kijunsen'],
+                name = "Kijunsen",
+                line = dict(color = ('rgba(140, 40, 40, 100)')))
+            data.append(trace)
 
-        data.extend([candle, vwap])
+        if df.__contains__('senkou_a'):
+            trace = go.Scatter(
+                x = df['time'],
+                y = df['senkou_a'],
+                name = "Senkou A",
+                line = dict(color = ('rgba(160, 240, 160, 100)')))
+            data.append(trace)
+    
+        # As you saw in the chart earlier, the portion between Senkou A and B
+        # is filled, either with red or with green. Here, We'll only be using red
+        # I haven't found a proper way to change the colors of the fill based on
+        # who is on top (Senkou A or B). If you have a way, please put it into the
+        # comments, or bettew yet, write it in the code on github (make a pull request)!!
+
+        if df.__contains__('senkou_b'):
+            trace = go.Scatter(
+                x = df['time'],
+                y = df['senkou_b'],
+                name = "Senkou B",
+                fill = "tonexty",
+                line = dict(color = ('rgba(240, 160, 160, 50)')))
+            data.append(trace)
 
         if buy_signals:
             buys = go.Scatter(
@@ -206,71 +177,39 @@ class TradingModel:
                     y = [item[1] for item in buy_signals],
                     name = "Buy Signals",
                     mode = "markers",
+                    marker_size = 20
                 )
+            data.append(buys)
 
+        if sell_signals:
             sells = go.Scatter(
-                    x = [item[0] for item in buy_signals],
-                    y = [item[1]*1.05 for item in buy_signals],
-                    name = "Sell Signals",
-                    mode = "markers",
-                )
-
-            data = [candle, ssma, fsma, buys, sells]
-
+                x = [item[0] for item in sell_signals],
+                y = [item[1] for item in sell_signals],
+                name = "Sell Signals",
+                mode = "markers",
+                marker_size = 20
+            )
+            data.append(sells)
 
         # style and display
-        layout = go.Layout(title = self.symbol)
+        # let's customize our layout a little bit:
+        layout = go.Layout(
+            title=plot_title,
+            xaxis = {
+                "title" : self.symbol,
+                "rangeslider" : {"visible": False},
+                "type" : "date"
+            },
+            yaxis = {
+                "fixedrange" : False,
+            })
+            
+        fig = go.Figure(data = data, layout = layout)
 
-        fig = make_subplots(rows=4, cols=1, shared_xaxes=True, row_heights=[100,25,25,25])
-
-        #fig = go.Figure()
-        #fig = go.Figure(data = data, layout = layout)
-        #fig = go.Figure(data = data)
-        for gobject in data:
-            fig.add_trace(gobject,row=1,col=1)
-        
-        fig.add_trace(vol,row=2,col=1)        
-
-        fig.add_trace(rsi,row=3,col=1)
-        fig.add_trace(mfi,row=3,col=1)
-
-        fig.add_trace(macd_val,row=4,col=1)
-        fig.add_trace(macd_signal_line,row=4,col=1)
-        fig.add_trace(vw_macd,row=4,col=1)
-        fig.add_trace(vw_macd_sig,row=4,col=1)
-
-        fig.layout.template = "plotly_dark"
-
-
-        plot(fig, filename=self.symbol+'.html')
-
-
-    def maStrategy(self, i:int):
-        ''' If price is 10% below the Slow MA, return True'''
-
-        df = self.df
-        buy_price = 0.8 * df['slow_sma'][i]
-        if buy_price >= df['close'][i]:
-            self.buy_signals.append([df['time'][i], df['close'][i], df['close'][i] * 1.045])
-            return True
-
-        return False
-
-    def bollStrategy(self, i:int):
-        ''' If price is 5% below the Lower Bollinger Band, return True'''
-
-        df = self.df
-        buy_price = 0.98 * df['low_boll'][i]
-        if buy_price >= df['close'][i]:
-            self.buy_signals.append([df['time'][i], df['close'][i], df['close'][i] * 1.045])
-            return True
-
-        return False
-
+        plot(fig, filename='graphs/'+plot_title+'.html')
 
 def Main():
-
-    exchange = bi.Binance()
+    exchange = Binance()
     symbols = exchange.GetTradingSymbols()
     for symbol in symbols:
 
@@ -278,18 +217,8 @@ def Main():
         input("\nPress key to continue...")
         print(symbol)
         model = TradingModel(symbol)
-        plot = True
-        
-        # if model.maStrategy(len(model.df['close'])-1):
-        #   print(" MA Strategy match on "+symbol)
-        #   plot = True
-
-        if model.bollStrategy(len(model.df['close'])-1):
-            print(" Boll Strategy match on "+symbol)
-            plot = True
-
-        if plot:
-            model.plotData()
+        model.plotData()
+            
 
 if __name__ == '__main__':
     Main()
