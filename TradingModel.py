@@ -8,6 +8,11 @@ import Indicators
 import finplot as fplt
 
 from Binance import Binance
+#import threading
+import multiprocessing
+
+# size of requested dataframe
+N = 100
 
 class TradingModel:
     
@@ -18,7 +23,7 @@ class TradingModel:
         self.symbol = symbol
         self.timeframe = timeframe
         self.exchange = Binance()
-        self.df = self.exchange.GetSymbolKlines(symbol, timeframe, 10000)
+        self.df = self.exchange.GetSymbolKlines(symbol, timeframe, N)
         self.last_price = self.df['close'][len(self.df['close'])-1]
 
     # We'll look directly in the dataframe to see what indicators we're plotting
@@ -208,17 +213,52 @@ class TradingModel:
 
         plot(fig, filename='graphs/'+plot_title+'.html')
 
+
+def cart_prod(coins):
+    pairs = []
+    coins2=[coin for coin in coins]
+    for coin in coins:
+        coins2.remove(coin)
+        for coin2 in coins2:
+            pairs.append((coin, coin2))
+    return pairs
+
 def Main():
+    # threads = list()
+    processes = list()
     exchange = Binance()
     symbols = exchange.GetTradingSymbols()
     for symbol in symbols:
-
-        # import pdb; pdb.set_trace()
-        input("\nPress key to continue...")
-        print(symbol)
+        abort=True
+        coins = ["bnb", "btc", "eth", "xrp", "bch", "ltc"]
+        for pair in cart_prod(coins):
+            if pair[0] in symbol.lower() and pair[1] in symbol.lower():
+                abort=False
+        if abort:
+            continue
+        
+        print("\n" + symbol + "\n==========")
         model = TradingModel(symbol)
-        model.plotData()
-            
+
+        # x = threading.Thread(target=model.plotData)
+        # threads.append(x)
+        # x.start()
+        process = multiprocessing.Process(target=model.plotData)
+        processes.append(process)
+        process.start()
+        
+                
+
+        key = None
+        while key not in ['y','n','']:
+            key = input("continue?[Y/n]\n").lower()
+        if key == 'n':
+            break
+    # for thread in threads:
+    #     thread.join()
+    for process in processes:
+        process.join()
+
 
 if __name__ == '__main__':
     Main()

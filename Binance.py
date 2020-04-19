@@ -54,19 +54,19 @@ class Binance:
         }
         self.account_access = False
 
-        # if filename == None:
-        #   return
+        if filename == None:
+          return
     
-        # f = open(filename, "r")
-        # contents = []
-        # if f.mode == 'r':
-        #   contents = f.read().split('\n')
+        f = open(filename, "r")
+        contents = []
+        if f.mode == 'r':
+          contents = f.read().split('\n')
 
-        # self.binance_keys = dict(api_key = contents[0], secret_key=contents[1])
+        self.binance_keys = dict(api_key = contents[0], secret_key=contents[1])
 
-        # self.headers = {"X-MBX-APIKEY": self.binance_keys['api_key']}
+        self.headers = {"X-MBX-APIKEY": self.binance_keys['api_key']}
 
-        # self.account_access = True
+        self.account_access = True
     
     def _get(self, url, params=None, headers=None) -> dict:
         """ Makes a Get Request """
