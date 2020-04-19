@@ -8,3 +8,8 @@ def cart_prod(coins):
         for coin2 in coins2:
             pairs.append((coin, coin2))
     return pairs
+
+def process_message(msg):
+    print("message type: {}".format(msg['e']))
+    print(msg)
+    # do something
