@@ -8,8 +8,6 @@ import Indicators
 import finplot as fplt
 
 from Binance import Binance
-#import threading
-import multiprocessing
 
 # size of requested dataframe
 N = 100
@@ -212,53 +210,7 @@ class TradingModel:
         fig = go.Figure(data = data, layout = layout)
 
         plot(fig, filename='graphs/'+plot_title+'.html')
-
-
-def cart_prod(coins):
-    pairs = []
-    coins2=[coin for coin in coins]
-    for coin in coins:
-        coins2.remove(coin)
-        for coin2 in coins2:
-            pairs.append((coin, coin2))
-    return pairs
-
-def Main():
-    # threads = list()
-    processes = list()
-    exchange = Binance()
-    symbols = exchange.GetTradingSymbols()
-    for symbol in symbols:
-        abort=True
-        coins = ["bnb", "btc", "eth", "xrp", "bch", "ltc"]
-        for pair in cart_prod(coins):
-            if pair[0] in symbol.lower() and pair[1] in symbol.lower():
-                abort=False
-        if abort:
-            continue
-        
-        print("\n" + symbol + "\n==========")
-        model = TradingModel(symbol)
-
-        # x = threading.Thread(target=model.plotData)
-        # threads.append(x)
-        # x.start()
-        process = multiprocessing.Process(target=model.plotData)
-        processes.append(process)
-        process.start()
-        
-                
-
-        key = None
-        while key not in ['y','n','']:
-            key = input("continue?[Y/n]\n").lower()
-        if key == 'n':
-            break
-    # for thread in threads:
-    #     thread.join()
-    for process in processes:
-        process.join()
-
+    
 
 if __name__ == '__main__':
-    Main()
+    pass
