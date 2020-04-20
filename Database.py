@@ -238,7 +238,7 @@ class BotDatabase:
 		conn = sqlite3.connect(self.name, detect_types=sqlite3.PARSE_DECLTYPES)
 		conn.row_factory = sqlite3.Row
 		c = conn.cursor()
-		c.execute('SELECT * FROM orders Where bot_id = ? and closing_order_id = 0 and is_closed = False', (bot['id'],))
+		c.execute(f"""SELECT * FROM orders Where bot_id = "{bot['id']}" and closing_order_id = 0 and is_closed = 0""")
 		
 		orders = []
 		result = [dict(row) for row in c.fetchall()]
@@ -249,7 +249,10 @@ class BotDatabase:
 		conn = sqlite3.connect(self.name, detect_types=sqlite3.PARSE_DECLTYPES)
 		conn.row_factory = sqlite3.Row
 		c = conn.cursor()
-		c.execute('SELECT * FROM pairs Where bot_id = ? and is_active = True', (bot['id'],))
+		c.execute(f"""SELECT * FROM pairs Where bot_id = "{bot['id']}" and is_active = 1""")
+		#c.execute('SELECT * FROM pairs Where bot_id = ? and is_active = True', (bot['id'],))
+		#c.execute('SELECT * FROM pairs Where  is_active = 1', (bot['id'],))
+		
 		result = [dict(row) for row in c.fetchall()]
 		return result
 

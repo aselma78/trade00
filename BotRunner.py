@@ -3,7 +3,6 @@ from requests import exceptions
 
 from uuid import uuid1
 from decimal import Decimal, getcontext
-from yaspin import yaspin
 from Binance import Binance
 
 from multiprocessing.pool import ThreadPool as Pool
@@ -16,8 +15,7 @@ from Strategies import *
 
 class BotRunner:
 
-	def __init__(self, sp, exchange, database):
-		self.sp = sp
+	def __init__(self, exchange, database):
 		self.exchange = exchange
 		self.database = database
 		self.update_balance = True
@@ -25,7 +23,6 @@ class BotRunner:
 		getcontext().prec = 33
 
 	def EntryOrder(self, bot_params, strategy_function, pairs, symbol_data):
-		sp = self.sp
 		exchange = self.exchange
 		database = self.database
 
@@ -34,7 +31,7 @@ class BotRunner:
 		df = exchange.GetSymbolKlines(symbol, bot_params['interval'])	
 		buy = strategy_function(df, len(df['close'])-1)
 
-		sp.text = "Checking signals on "+symbol
+		print("Checking signals on "+symbol)
 		# if signal, place buy order
 		if buy is not False:
 			i = len(df) - 1
@@ -63,11 +60,10 @@ class BotRunner:
 				model.df = df
 				model.plotData(buy_signals=[(df['time'][i], buy)], plot_title=symbol)
 
-				sp.stop()
 				print(order_params)
 				print("Signal found on "+ symbol +", place order (y / n)?")
 				permission = input()
-				sp.start()
+
 				if permission != 'y':
 					return
 
@@ -93,7 +89,6 @@ class BotRunner:
 	def ExitOrder(self, bot_params, pairs, order:dict):
 		# Check order has been filled, if it has, update order in database and then
 		# place a new order at target price, OCO-type if we also have stop loss enabled
-		sp = self.sp
 		exchange = self.exchange
 		database = self.database
 
@@ -108,7 +103,7 @@ class BotRunner:
 
 		pair = pairs[symbol]
 		
-		sp.text = "Looking for an Exit on "+symbol
+		print("Looking for an Exit on "+symbol)
 		# update old order in database
 		order['status'] = exchange_order_info['status']
 		order['executed_quantity'] = Decimal(exchange_order_info['executedQty'])
@@ -128,7 +123,6 @@ class BotRunner:
 					newClientOrderId = order_id)
 
 				if self.ask_permission:
-					sp.stop()
 					print("Exit found on "+ symbol)
 
 					print("Entry Order ")
@@ -163,11 +157,9 @@ class BotRunner:
 					pair['current_order_id'] = order_id
 			else:
 				self.update_balance = True
-				sp.stop()
 				print("Succesfully exited order on "+ symbol +"!")
 				print(order)
 				print(exchange_order_info)
-				sp.start()
 				order['is_closed'] = True
 				# order['closing_order_id'] = order['id']
 				pair['is_active'] = True
@@ -188,18 +180,15 @@ class BotRunner:
 	def PlaceOrder(self, params, test):
 		''' Places order on Pair based on params. Returns False if unsuccesful, 
 		or the order_info received from the exchange if succesful '''
-		sp = self.sp
 		exchange = self.exchange
 
 		order_info = exchange.PlaceOrderFromDict(params, test=test)
 		# IF ORDER PLACING UNSUCCESFUL, CLOSE THIS POSITION
-		sp.stop()
 		if "code" in order_info:
 			print("ERROR placing order !!!! ")
 			print(params)
 			print(order_info)
 			print()
-			sp.start()
 			return False
 		# IF ORDER SUCCESFUL, SET PAIR TO ACTIVE
 		else:
@@ -207,27 +196,22 @@ class BotRunner:
 			print(params)
 			print(order_info)
 			print()
-			sp.start()
 			return order_info
 
 	def CheckRequestValue(self, response, text='Error getting request from exchange!', print_response=True):
 		""" Checks return value of request """
-		sp = self.sp
 
 		if "code" in response:
-			sp.stop()
 			print(text)
 			if print_response:
 				print(response)
 				print()
-			sp.start()
 			return False
 		else:
 			return True
 
 	def OrderResultToDatabase(self, order_result, symbol_data, bot_params, is_entry_order=False, is_closed=False, closing_order_id=False):
 		
-		sp = self.sp
 		exchange = self.exchange
 
 		order = dict()
@@ -250,10 +234,8 @@ class BotRunner:
 		order['is_closed'] = is_closed
 		order['closing_order_id'] = closing_order_id
 
-		sp.stop()
 		print("In db, order will be saved as ")
 		print(order)
-		sp.start()
 
 		return order
 
@@ -263,10 +245,9 @@ class BotRunner:
 		interval='3m',
 		trade_allocation=0.1, 
 		profit_target=1.012, 
-		test=False, 
+		test=True, 
 		symbols=[]):
 
-		sp = self.sp
 		exchange = self.exchange
 		database = self.database
 
@@ -311,8 +292,6 @@ class BotRunner:
 
 	def GetBotFromDb(self, id):
 		""" Returns a Bot from the DB given an ID """
-
-		sp = self.sp
 		exchange = self.exchange
 		database = self.database
 
@@ -333,8 +312,6 @@ class BotRunner:
 
 	def GetAllBotsFromDb(self):
 		""" Returns all Bots from the DB """
-		
-		sp = self.sp
 		exchange = self.exchange
 		database = self.database
 
@@ -367,7 +344,6 @@ class BotRunner:
 			time.sleep(1)
 			account_data = exchange.GetAccountData()
 			if requested_times > 15:
-				self.sp.stop()
 				print("\nCan't get balance from exchange, tried more than 15 times.\n", "Stopping.\n")
 				return False, False, False
 
@@ -394,10 +370,10 @@ class BotRunner:
 		database = self.database
 
 		if len(bots) == 0:
-			self.sp.text = "No bots available, exiting..."
+			print("No bots available, exiting...")
 			return
 
-		self.sp.text = "Getting balances of all bots..."
+		print("Getting balances of all bots...")
 		account_data, balances_text, buy_on_bot = self.GetBalances(bots)
 
 		self.all_symbol_datas = dict()
@@ -408,70 +384,64 @@ class BotRunner:
 				self.all_symbol_datas[pair['symbol']] = sd[pair['symbol']]
 
 		while True:
-			with yaspin() as sp:
-				self.sp = sp
-				try:
-					# Get All Pairs
-					aps = [] 
-					for bot, sd in bots:
-						aps.extend(database.GetAllPairsOfBot(bot))
-					all_pairs = dict()
+			try:
+				# Get All Pairs
+				aps = [] 
+				for bot, sd in bots:
+					aps.extend(database.GetAllPairsOfBot(bot))
+				all_pairs = dict()
+				for pair in aps:
+					all_pairs[pair['symbol']] = pair
+
+				# Only request balances if order was placed recently
+				if self.update_balance:
+					account_data, balances_text, buy_on_bot = self.GetBalances(bots)
+					if account_data is False:
+						return
+					print(balances_text)
+					self.update_balance = False
+				
+				# Find Signals on Bots
+				for bot, symbol_datas_dict in bots:
+
+					# Get Active Pairs per Bot
+					ap_symbol_datas = []
+					aps = database.GetActivePairsOfBot(bot)	
+					pairs = dict()
 					for pair in aps:
-						all_pairs[pair['symbol']] = pair
-
-					# Only request balances if order was placed recently
-					if self.update_balance:
-						account_data, balances_text, buy_on_bot = self.GetBalances(bots)
-						if account_data is False:
-							return
-						sp.stop()
-						print(balances_text)
-						sp.start()
-						self.update_balance = False
-					
-					# Find Signals on Bots
-					for bot, symbol_datas_dict in bots:
-
-						# Get Active Pairs per Bot
-						ap_symbol_datas = []
-						aps = database.GetActivePairsOfBot(bot)	
-						pairs = dict()
-						for pair in aps:
-							if symbol_datas_dict.get(pair['symbol'], None) == None:
-								sp.text = "Couldn't find " + pair['symbol'] + " looking for it later..."
-							else:
-								ap_symbol_datas.append(symbol_datas_dict[pair['symbol']])
-								pairs[pair['symbol']] = pair
-
-						# If Enough Balance on bot, try finding signals
-						try:
-							self.Run(bot, strategies_dict[bot['strategy_name']], pairs, ap_symbol_datas)
-						except exceptions.SSLError:
-							sp.text = "SSL Error caught!"
-						except exceptions.ConnectionError:
-							sp.text = "Having trouble connecting... retry"
-					
-						open_orders = database.GetOpenOrdersOfBot(bot)
-
-						# If we have open orders saved in the DB, see if they exited
-						if len(open_orders) > 0:
-							sp.text = (str(len(open_orders)) + " orders open on " + bot['name'] + ", looking to close.")
-							try:
-								self.Exit(bot, all_pairs, open_orders)
-							except exceptions.SSLError:
-								sp.text = "SSL Error caught!"
-							except exceptions.ConnectionError:
-								sp.text = "Having trouble connecting... retry"
+						if symbol_datas_dict.get(pair['symbol'], None) == None:
+							print("Couldn't find " + pair['symbol'] + " looking for it later...")
 						else:
-							sp.text = "No orders open on "+ bot['name']
+							ap_symbol_datas.append(symbol_datas_dict[pair['symbol']])
+							pairs[pair['symbol']] = pair
 
-				except KeyboardInterrupt:
-					sp.stop()
-					print("\nExiting...\n")
-					return
+					# If Enough Balance on bot, try finding signals
+					try:
+						self.Run(bot, strategies_dict[bot['strategy_name']], pairs, ap_symbol_datas)
+					except exceptions.SSLError:
+						print("SSL Error caught!")
+					except exceptions.ConnectionError:
+						print("Having trouble connecting... retry")
+				
+					open_orders = database.GetOpenOrdersOfBot(bot)
+
+					# If we have open orders saved in the DB, see if they exited
+					if len(open_orders) > 0:
+						print(str(len(open_orders)) + " orders open on " + bot['name'] + ", looking to close.")
+						try:
+							self.Exit(bot, all_pairs, open_orders)
+						except exceptions.SSLError:
+							print("SSL Error caught!")
+						except exceptions.ConnectionError:
+							print("Having trouble connecting... retry")
+					else:
+						print("No orders open on "+ bot['name'])
+
+			except KeyboardInterrupt:
+				print("\nExiting...\n")
+				return
 
 	def Run(self, bot_params, strategy_function, pairs, symbol_datas):
-		sp = self.sp
 		exchange = self.exchange
 		database = self.database
 
@@ -482,7 +452,6 @@ class BotRunner:
 		pool.join()
 
 	def Exit(self, bot_params, pairs, orders):
-		sp = self.sp
 		exchange = self.exchange
 		database = self.database
 
@@ -493,11 +462,10 @@ class BotRunner:
 		pool.join()
 
 def Main():
-
-	sp = yaspin()
 	exchange = Binance(filename = 'credentials.txt')
+	#exchange = Binance()
 	database = BotDatabase("database.db")
-	prog = BotRunner(sp, exchange, database)
+	prog = BotRunner(exchange, database)
 
 	i = input("Execute or Quit? (e or q)\n")
 	bot_symbol_datas = []
@@ -518,9 +486,10 @@ def Main():
 				'OGNBTC', 'OGNUSDT', 'BEARUSDT', 'ETHBULLUSDT', 'ETHBEARUSDT', \
 				'WRXBTC', 'WRXUSDT', 'LTOBTC', 'EOSBEARUSDT', 'XRPBULLUSDT', \
 				'XRPBEARUSDT', 'AIONUSDT', 'COTIBTC']
+				# symbols = ['ETHBTC', 'BNBBTC', 'XRPBTC', 'BCHBTC', 'XTZBTC', 'XRPETH', 'BNBETH', ]
 				
 				bot, symbol_datas_dict = prog.CreateBot(
-					strategy_name='ma_crossover',
+					strategy_name='ichimoku_bullish',
 					trade_allocation=0.001, 
 					symbols=symbols)
 				bot_symbol_datas.append((bot, symbol_datas_dict))
