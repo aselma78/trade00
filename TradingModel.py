@@ -17,12 +17,15 @@ class TradingModel:
     # We can now remove the code where we're computing the indicators from this class,
     # As we will be computing them in the Strategies class (on a per-need basis)
 
-    def __init__(self, symbol, timeframe:str='4h'):
+    def __init__(self, symbol, timeframe:str='4h', exchange:str="Binance", num_frames:int=N):
         self.symbol = symbol
         self.timeframe = timeframe
-        self.exchange = Binance()
-        self.df = self.exchange.GetSymbolKlines(symbol, timeframe, N)
-        self.last_price = self.df['close'][len(self.df['close'])-1]
+        if exchange == "Binance":
+            self.exchange = Binance()
+            self.df = self.exchange.GetSymbolKlines(symbol, timeframe, num_frames)
+            self.last_price = self.df['close'][len(self.df['close'])-1]
+        else:
+            self.df = pd.read_csv("empty.csv")
 
     # We'll look directly in the dataframe to see what indicators we're plotting
 
