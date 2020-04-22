@@ -5,6 +5,10 @@ import json
 import numpy as np
 import Indicators
 
+import plotly.graph_objs as go
+from plotly.offline import plot
+from plotly.subplots import make_subplots
+
 import finplot as fplt
 
 from Binance import Binance
@@ -31,7 +35,7 @@ class TradingModel:
 
     def plotData(self, buy_signals = False, sell_signals = False, plot_title:str="",target="default",
                 indicators=[]):
-        if target=="default":
+        if target!="default":
             self.plotFinplot(buy_signals=buy_signals, sell_signals=sell_signals, plot_title=plot_title,
                 indicators=indicators)
         else:
