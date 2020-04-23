@@ -14,7 +14,7 @@ import finplot as fplt
 from Binance import Binance
 
 # size of requested dataframe
-N = 100
+N = 2000
 
 class TradingModel:
     
@@ -35,7 +35,7 @@ class TradingModel:
 
     def plotData(self, buy_signals = False, sell_signals = False, plot_title:str="",target="default",
                 indicators=[]):
-        if target!="default":
+        if target=="default":
             self.plotFinplot(buy_signals=buy_signals, sell_signals=sell_signals, plot_title=plot_title,
                 indicators=indicators)
         else:
@@ -56,20 +56,41 @@ class TradingModel:
         fplt.plot(df['time'], df['close'].rolling(25).mean(), ax=ax, color='#00f', legend='ma-25')
 
         # place some dumb markers
-        hi_wicks = df['high'] - df[['open','close']].T.max()
-        df.loc[(hi_wicks>hi_wicks.quantile(0.99)), 'marker'] = df['high']
-        fplt.plot(df['time'], df['marker'], ax=ax, color='#0F0', style='v', legend='dumb mark')
+        #hi_wicks = df['high'] - df[['open','close']].T.max()
+        #df.loc[(hi_wicks>hi_wicks.quantile(0.99)), 'marker'] = df['high']
+        #fplt.plot(df['time'], df['marker'], ax=ax, color='#0F0', style='v', legend='dummy mark')
 
-        fplt.plot(df['time'], Indicators.vwma(df)['vwma'], ax=ax, color='#927', legend='stuff')
+        #hi_wicks = df[['open','close']].T.min() - df['low']
+        #df.loc[(hi_wicks>hi_wicks.quantile(0.99)), 'marker'] = df['low']
+        #fplt.plot(df['time'], df['marker'], ax=ax, color='#F00', style='v', legend='dumb mark')
+
+        fplt.plot(df['time'], Indicators.vwma(df)['vwma'], ax=ax, color='#927', legend='vwma')
+
+        fplt.plot(df['time'], df['50_ema'], ax=ax, color='#ccc', legend='50 EMA')
+        fplt.plot(df['time'], df['200_ema'], ax=ax, color='#ddd', legend='200 EMA')
 
         # draw some random crap on our second plot
-        fplt.plot(df['time'], Indicators.rsi(df)['rsi'], ax=ax2, color='#927', legend='stuff')
+        fplt.plot(df['time'], Indicators.rsi(df)['rsi'], ax=ax2, color='#927', legend='rsi')
         fplt.set_y_range(-1.4, +1.7, ax2) # fix y-axis range
+
+        fplt.plot(df['time'], 0.3*np.ones(len(df['time'])), ax=ax2, color='#ccc', legend='30%')
+        fplt.plot(df['time'], 0.7*np.ones(len(df['time'])), ax=ax2, color='#ccc', legend='70%')
 
         # finally a volume bar chart in our third plot
         volumes = df[['time','open','close','volume']]
         fplt.volume_ocv(volumes, ax=ax3)
 
+        # buy/sell signals
+        if buy_signals:
+            x = [float(item[0]) for item in buy_signals]
+            y = [float(item[1]) for item in buy_signals]
+            fplt.plot(x, y, ax=ax, color='#00FF00', style='v', legend='Buy Signals')
+
+        if sell_signals:
+            x = [float(item[0]) for item in sell_signals]
+            y = [float(item[1]) for item in sell_signals]
+            fplt.plot(x, y, ax=ax, color='#FF0000', style='v', legend='Sell Signals')
+            
         # we're done
         fplt.show()
 

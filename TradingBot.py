@@ -137,7 +137,7 @@ def Main():
 	if answer == 'e':
 		EvaluateStrategies(symbols=symbols, interval='1h', strategy_evaluators=strategy_evaluators)
 	if answer == 'b':
-		BacktestStrategies(symbols=symbols, interval='1h', plot=False, strategy_evaluators=strategy_evaluators)
+		BacktestStrategies(symbols=symbols, interval='1h', plot=True, strategy_evaluators=strategy_evaluators)
 	if answer == 'q':
 		print("\nBYE!\n")
 
