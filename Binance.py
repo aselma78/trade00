@@ -200,11 +200,12 @@ class Binance:
         if limit > 1000:
             return self.GetSymbolKlinesExtra(symbol, interval, limit, end_time)
         
-        params = '?&symbol='+symbol+'&interval='+interval+'&limit='+str(limit)
+        params = '?symbol='+symbol+'&interval='+interval+'&limit='+str(limit)
         if end_time:
             params = params + '&endTime=' + str(int(end_time))
 
         url = self.base + self.endpoints['klines'] + params
+        print(url)
 
         # download data
         data = requests.get(url)

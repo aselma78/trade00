@@ -185,7 +185,10 @@ class PandasDataSource:
         data.columns = [self.renames.get(col, col) for col in data.columns]
         for col in df.columns:
             if col not in data.columns:
-                data[col] = df[col]
+                if col=='_zero_':
+                    data[col] =[0]*len(data['v'])
+                else:
+                    data[col] = df[col]
         data = data.reset_index()
         self.df = data[orig_cols]
 
@@ -290,10 +293,10 @@ class FinCrossHair:
         self.hline = pg.InfiniteLine(angle=0, movable=False, pen=pen)
         self.xtext = pg.TextItem(color=color, anchor=(0,1))
         self.ytext = pg.TextItem(color=color, anchor=(0,0))
-        self.vline.setZValue(50)
-        self.hline.setZValue(50)
-        self.xtext.setZValue(50)
-        self.ytext.setZValue(50)
+        self.vline.setZValue(5)
+        self.hline.setZValue(5)
+        self.xtext.setZValue(5)
+        self.ytext.setZValue(5)
         ax.addItem(self.vline, ignoreBounds=True)
         ax.addItem(self.hline, ignoreBounds=True)
         ax.addItem(self.xtext, ignoreBounds=True)
