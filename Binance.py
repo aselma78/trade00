@@ -257,7 +257,8 @@ class Binance:
             'symbol': symbol,
             'side': side,           # BUY or SELL
             'type': type,               # MARKET, LIMIT, STOP LOSS etc
-            'quoteOrderQty': quantity,
+            #'quoteOrderQty': quantity,
+            'quantity': quantity,
             'recvWindow': 5000,
             'timestamp': int(round(time.time()*1000)) + request_delay
         }
