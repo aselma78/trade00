@@ -34,16 +34,17 @@ class TradingModel:
     # We'll look directly in the dataframe to see what indicators we're plotting
 
     def plotData(self, buy_signals = False, sell_signals = False, plot_title:str="",target="default",
-                indicators=[]):
+                indicators=[], debug_signals={}):
         if target=="default":
             self.plotFinplot(buy_signals=buy_signals, sell_signals=sell_signals, plot_title=plot_title,
-                indicators=indicators)
+                indicators=indicators, debug_signals=debug_signals)
         else:
             self.plotLy(buy_signals=buy_signals, sell_signals=sell_signals, plot_title=plot_title,
-                indicators=indicators)
+                indicators=indicators, debug_signals=debug_signals)
 
     def plotFinplot(self, buy_signals = False, sell_signals = False, plot_title:str="",
-    indicators=[]):
+    indicators=[], debug_signals={}):
+        # import ipdb;ipdb.set_trace()
         df = self.df
 
         ax,ax2,ax3 = fplt.create_plot(self.symbol, rows=3)
@@ -79,17 +80,34 @@ class TradingModel:
         # finally a volume bar chart in our third plot
         volumes = df[['time','open','close','volume']]
         fplt.volume_ocv(volumes, ax=ax3)
+        
+
+        if debug_signals:
+            # import ipdb;ipdb.set_trace()
+            stop_loss_marks = debug_signals["stop_loss_marks"]
+            target_price_marks = debug_signals["target_price_marks"]
+
+            if stop_loss_marks:
+                x = [float(item[0]) for item in stop_loss_marks]
+                y = [float(item[1]) for item in stop_loss_marks]
+                fplt.plot(x, y, ax=ax, color='#FFFF00', style='v', legend='Stop Loss Signals')
+
+            if target_price_marks:
+                x = [float(item[0]) for item in target_price_marks]
+                y = [float(item[1]) for item in target_price_marks]
+                fplt.plot(x, y, ax=ax, color='#00FFFF', style='^', legend='Target Price Signals')
 
         # buy/sell signals
         if buy_signals:
             x = [float(item[0]) for item in buy_signals]
             y = [float(item[1]) for item in buy_signals]
-            fplt.plot(x, y, ax=ax, color='#00FF00', style='v', legend='Buy Signals')
+            fplt.plot(x, y, ax=ax, color='#00FF00', style='^', legend='Buy Signals')
 
         if sell_signals:
             x = [float(item[0]) for item in sell_signals]
             y = [float(item[1]) for item in sell_signals]
             fplt.plot(x, y, ax=ax, color='#FF0000', style='v', legend='Sell Signals')
+                
             
         # we're done
         fplt.show()
@@ -98,7 +116,7 @@ class TradingModel:
             indicators=[
                 dict(col_name="fast_ema", color="indianred", name="FAST EMA"), 
                 dict(col_name="50_ema", color="indianred", name="50 EMA"), 
-                dict(col_name="200_ema", color="indianred", name="200 EMA")]):
+                dict(col_name="200_ema", color="indianred", name="200 EMA")], debug_signals={}):
         df = self.df
 
         # plot candlestick chart
@@ -221,6 +239,30 @@ class TradingModel:
                 marker_size = 20
             )
             data.append(sells)
+
+        if debug_signals:
+            stop_loss_marks = debug_signals["stop_loss_marks"]
+            target_price_marks = debug_signals["target_price_marks"]
+
+            if stop_loss_marks:
+                stop_loss = go.Scatter(
+                    x = [item[0] for item in stop_loss_marks],
+                    y = [item[1] for item in stop_loss_marks],
+                    name = "Stop Loss Signals",
+                    mode = "markers",
+                    marker_size = 2
+                )
+            data.append(stop_loss)
+
+            if target_price_marks:
+                target_price = go.Scatter(
+                    x = [item[0] for item in target_price_marks],
+                    y = [item[1] for item in target_price_marks],
+                    name = "Target Price Signals",
+                    mode = "markers",
+                    marker_size = 2
+                )
+            data.append(target_price)
 
         # style and display
         # let's customize our layout a little bit:

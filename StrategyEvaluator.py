@@ -19,6 +19,7 @@ class StrategyEvaluator:
 
 		self.profits_list = []
 		self.results = dict()
+		self.debug_signals = dict()
 
 	def backtest(self,
 	model,
@@ -52,6 +53,9 @@ class StrategyEvaluator:
 		buy_times = []
 		sell_times = []
 
+		stop_loss_marks = []
+		target_price_marks = []
+
 		last_buy = None
 
 		getcontext().prec = 30
@@ -80,16 +84,31 @@ class StrategyEvaluator:
 					stop_loss = Decimal(initial_stop_loss)
 					profit_target = Decimal(initial_profits)
 
+					# print(f"\n\n\nBuying...   {df['time'][i]}")
+					# print(f"buy_price: {buy_price}")
+					# print(f"stop_loss: {stop_loss}")
+
+
 			elif last_buy is not None and i > last_buy["index"] + 1:
 				# Yes (we already bought) so check whether the price has hit 
 				# EITHER the stop loss price OR the target price
 				stop_loss_price = last_buy["price"] * stop_loss
-				next_target_price = last_buy["price"] * profit_target
+				stop_loss_marks.append([df['time'][i], stop_loss_price])
+
+				next_target_price = last_buy["price"] * profit_target  
+				target_price_marks.append([df['time'][i], next_target_price])
+
+				# print(f"\nBuy locked  frame:{i}")
+				# print(f"stop_loss_price: {stop_loss_price}")
+				# print(f"next_target_price: {next_target_price}")
 
 				if df['low'][i] < stop_loss_price:
 					# If price went below our stop_loss, we sold at that point
 					sell_times.append([df['time'][i], stop_loss_price])
 					resulting_balance = resulting_balance * (stop_loss_price / buy_price)
+
+					# print("\nStop loss achieved (Selling...)")
+					# print(f"stop_loss_price: {stop_loss_price}")
 
 					last_buy = None
 					buy_price = Decimal(0)
@@ -101,9 +120,12 @@ class StrategyEvaluator:
 						"index" : i,
 						"price" : Decimal(next_target_price)
 					}
-
 					stop_loss = Decimal(incremental_stop_loss)
 					profit_target = Decimal(incremental_profits)
+					# print("\nTarget price achieved")
+					# print(f"stop_loss: {stop_loss}")
+					# print(f"profit_target: {profit_target}")
+
 		
 		# Now, aggregate results and add them to this model's symbol
 		self.results[model.symbol] = dict(
@@ -111,6 +133,9 @@ class StrategyEvaluator:
 			buy_times = buy_times,
 			sell_times = sell_times
 		)
+		
+		self.debug_signals['stop_loss_marks'] = stop_loss_marks
+		self.debug_signals['target_price_marks'] = target_price_marks
 
 		if resulting_balance > starting_balance:
 			self.profitable_symbols = self.profitable_symbols + 1

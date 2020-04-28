@@ -38,6 +38,7 @@ incremental_profits = 1.006, incremental_stop_loss = 0.996)):
 					model.plotData(
 						buy_signals = evaluator.results[model.symbol]['buy_times'],
 						sell_signals = evaluator.results[model.symbol]['sell_times'],
+						debug_signals = evaluator.debug_signals,
 						plot_title = evaluator.strategy.__name__+" on "+model.symbol)
 					
 				evaluator.profits_list.append(resulting_balance - trade_value)
@@ -85,6 +86,7 @@ incremental_profits = 1.006, incremental_stop_loss = 0.996)):
 					model.plotData(
 						buy_signals = evaluator.results[model.symbol]['buy_times'],
 						sell_signals = evaluator.results[model.symbol]['sell_times'],
+						debug_signals = evaluator.debug_signals,
 						plot_title=evaluator.strategy.__name__+" matched on "+symbol
 					)
 					print(evaluator.results[model.symbol])
