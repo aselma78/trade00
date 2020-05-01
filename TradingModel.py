@@ -81,6 +81,13 @@ class TradingModel:
         volumes = df[['time','open','close','volume']]
         fplt.volume_ocv(volumes, ax=ax3)
         
+        def fit(x, y):
+            output = np.empty(len(df["time"]))
+            output[:] = np.NaN
+            idx=pd.Index(df["time"])
+            for i in range(len(x)):
+                output[idx.get_loc(x[i])] = y[i]
+            return output
 
         if debug_signals:
             # import ipdb;ipdb.set_trace()
@@ -90,12 +97,16 @@ class TradingModel:
             if stop_loss_marks:
                 x = [float(item[0]) for item in stop_loss_marks]
                 y = [float(item[1]) for item in stop_loss_marks]
-                fplt.plot(x, y, ax=ax, color='#FFFF00', style='v', legend='Stop Loss Signals')
+
+                npy = pd.core.series.Series(fit(x, y))
+                fplt.plot(df['time'], npy, ax=ax, color='#FFFF00', style='v', legend='Stop Loss Signals')
 
             if target_price_marks:
                 x = [float(item[0]) for item in target_price_marks]
                 y = [float(item[1]) for item in target_price_marks]
-                fplt.plot(x, y, ax=ax, color='#00FFFF', style='^', legend='Target Price Signals')
+
+                npy = pd.core.series.Series(fit(x, y))
+                fplt.plot(df['time'], npy, ax=ax, color='#00FFFF', style='^', legend='Target Price Signals')
 
         # buy/sell signals
         if buy_signals:
