@@ -186,7 +186,7 @@ class PandasDataSource:
         for col in df.columns:
             if col not in data.columns:
                 if col=='_zero_':
-                    data[col] =[0]*len(data['v'])
+                    data[col] =[0]*len(data['o'])
                 else:
                     data[col] = df[col]
         data = data.reset_index()
