@@ -639,7 +639,10 @@ class FinViewBox(pg.ViewBox):
         if self.yscale == 'log':
             y0 = np.log10(y0) if y0 > 0 else -1
             y1 = np.log10(y1) if y1 > 0 else -1
-        self.setRange(QtCore.QRectF(pg.Point(x0, y0), pg.Point(x1, y1)), padding=0)
+        try:
+            self.setRange(QtCore.QRectF(pg.Point(x0, y0), pg.Point(x1, y1)), padding=0)
+        except:
+            pass
 
     def remove_last_roi(self):
         if self.rois:
