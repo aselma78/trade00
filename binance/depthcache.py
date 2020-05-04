@@ -121,7 +121,7 @@ class DepthCacheManager(object):
 
     _default_refresh = 60 * 30  # 30 minutes
 
-    def __init__(self, client, symbol, callback=None, refresh_interval=_default_refresh, bm=None, limit=500):
+    def __init__(self, client, symbol, callback=None, callback_init=None, refresh_interval=_default_refresh, bm=None, limit=500):
         """Initialise the DepthCacheManager
 
         :param client: Binance API client
@@ -140,6 +140,7 @@ class DepthCacheManager(object):
         self._symbol = symbol
         self._limit = limit
         self._callback = callback
+        self._callback_init = callback_init
         self._last_update_id = None
         self._depth_message_buffer = []
         self._bm = bm
@@ -159,7 +160,8 @@ class DepthCacheManager(object):
         self._depth_message_buffer = []
 
         res = self._client.get_order_book(symbol=self._symbol, limit=self._limit)
-
+        if self._callback_init:
+            self._callback_init(res)
         # process bid and asks from the order book
         for bid in res['bids']:
             self._depth_cache.add_bid(bid)
@@ -225,7 +227,6 @@ class DepthCacheManager(object):
         :return:
 
         """
-
         if buffer and msg['u'] <= self._last_update_id:
             # ignore any updates before the initial update id
             return
@@ -245,7 +246,8 @@ class DepthCacheManager(object):
 
         # call the callback with the updated depth cache
         if self._callback:
-            self._callback(self._depth_cache)
+            self._callback(msg)
+            # self._callback(self._depth_cache)
 
         self._last_update_id = msg['u']
 
