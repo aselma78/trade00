@@ -78,7 +78,7 @@ def callback(trade):
 
 if __name__ == '__main__':
     symbol = "BTCUSDT"
-    tradedb = TradeDatabase(symbol + ".db")
+    tradedb = TradeDatabase("DATA/" + symbol + "_trade.db")
     api_key=""
     api_secret = ""
     client = Client(api_key, api_secret)

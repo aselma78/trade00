@@ -83,7 +83,7 @@ def callback_db(msg):
 
 if __name__ == '__main__':
     symbol = "BTCUSDT"
-    obookdb = OrderBookDatabase(symbol + "_book.db")
+    obookdb = OrderBookDatabase("DATA/" + symbol + "_book.db")
     api_key=""
     api_secret = ""
     client = Client(api_key, api_secret)
